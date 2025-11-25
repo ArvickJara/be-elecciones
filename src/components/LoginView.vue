@@ -115,7 +115,8 @@ const loading = ref(false)
 const mostrarModalYaVoto = ref(false)
 const countdown = ref(5)
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
+const API_URL = '/api'
 
 // Manejar login de estudiante
 const handleStudentLogin = async () => {

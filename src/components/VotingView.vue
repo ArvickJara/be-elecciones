@@ -93,7 +93,8 @@ const error = ref(null)
 const votando = ref(false)
 const mostrarConfirmacion = ref(false)
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
+const API_URL = '/api'
 
 onMounted(() => {
     cargarCandidatos()

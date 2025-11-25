@@ -94,7 +94,7 @@
                                         backgroundColor: getColorBarra(candidato)
                                     }">
                                         <span class="bar-percentage">{{ calcularPorcentaje(candidato.total_votos)
-                                        }}%</span>
+                                            }}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -412,7 +412,8 @@ const formCandidato = ref({
     activo: true
 })
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
+const API_URL = '/api'
 
 const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
