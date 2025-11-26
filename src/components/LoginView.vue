@@ -10,10 +10,10 @@
             <div class="login-container">
                 <div class="login-card">
                     <div class="logo-container">
-                        <img src="@/assets/cole/logo_mejor.png" alt="Logo" class="logo" />
+                        <img src="@/assets/cole/logo_es.png" alt="Logo" class="logo" />
                     </div>
 
-                    <h2 class="title">Iniciar sesión</h2>
+                    <h2 class="title">{{ tituloMostrado }}</h2>
 
                     <div class="login-options">
                         <!-- Login Estudiante -->
@@ -24,18 +24,43 @@
                                     <input id="dni" v-model="studentDni" type="text" placeholder="Ingrese su DNI"
                                         maxlength="8" pattern="[0-9]{8}" required :disabled="loading" />
                                 </div>
+                                <div class="form-group">
+                                    <label for="dniConfirm">Contraseña</label>
+                                    <div class="input-with-icon">
+                                        <input id="dniConfirm" v-model="studentDniConfirm"
+                                            :type="mostrarPassword ? 'text' : 'password'"
+                                            placeholder="Ingrese su contraseña" maxlength="8" pattern="[0-9]{8}"
+                                            required :disabled="loading" />
+                                        <button type="button" class="toggle-password"
+                                            @click="mostrarPassword = !mostrarPassword" :disabled="loading"
+                                            tabindex="-1">
+                                            <svg v-if="!mostrarPassword" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                                 <button type="submit" class="btn btn-primary" :disabled="loading">
-                                    {{ loading ? 'Validando...' : 'Ingresar' }}
-                                </button>
-                                <button type="button" class="btn btn-link" @click="loginType = 'select'"
-                                    :disabled="loading">
-                                    ← Volver
+                                    {{ loading ? 'Validando...' : 'Ingresar a Votar' }}
                                 </button>
                             </form>
+
+                            <button class="admin-link-corner" @click="loginType = 'admin'">
+                                Panel de administración
+                            </button>
                         </div>
 
                         <!-- Login Administrador -->
-                        <div v-else-if="loginType === 'admin'" class="login-form">
+                        <div v-else class="login-form">
                             <form @submit.prevent="handleAdminLogin">
                                 <div class="form-group">
                                     <label for="username">Usuario</label>
@@ -50,35 +75,11 @@
                                 <button type="submit" class="btn btn-primary" :disabled="loading">
                                     {{ loading ? 'Verificando...' : 'Ingresar' }}
                                 </button>
-                                <button type="button" class="btn btn-link" @click="loginType = 'select'"
+                                <button type="button" class="btn btn-link" @click="loginType = 'student'"
                                     :disabled="loading">
-                                    ← Volver
+                                    ← Volver a votación
                                 </button>
                             </form>
-                        </div>
-
-                        <!-- Selección de tipo de login -->
-                        <div v-else class="login-select">
-                            <div class="login-buttons">
-                                <button class="btn btn-student" @click="loginType = 'student'">
-                                    <span class="icon-user">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="12" cy="7" r="4"></circle>
-                                        </svg>
-                                    </span>
-                                    <span class="btn-text">
-                                        <strong>Soy Estudiante</strong>
-                                        <small>Acceso para votar</small>
-                                    </span>
-                                </button>
-                            </div>
-
-                            <button class="admin-link-corner" @click="loginType = 'admin'">
-                                Panel de administración
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -101,19 +102,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 // Estado
-const loginType = ref('select') // 'select', 'student', 'admin'
+const loginType = ref('student') // Por defecto muestra el formulario de estudiante
 const studentDni = ref('')
+const studentDniConfirm = ref('')
 const adminUsername = ref('')
 const adminPassword = ref('')
 const loading = ref(false)
 const mostrarModalYaVoto = ref(false)
 const countdown = ref(5)
+const mostrarPassword = ref(false) // Estado para mostrar/ocultar contraseña
+const tituloMostrado = ref('') // Texto que se va mostrando letra por letra
+
+// Computed property para el título completo
+const tituloLogin = computed(() => {
+    return loginType.value === 'admin' ? 'Panel de Administración' : 'Sistema de votación digital'
+})
+
+// Función para animar el texto tipo máquina de escribir
+const animarTexto = (texto) => {
+    tituloMostrado.value = ''
+    let index = 0
+
+    const interval = setInterval(() => {
+        if (index < texto.length) {
+            tituloMostrado.value += texto[index]
+            index++
+        } else {
+            clearInterval(interval)
+        }
+    }, 80) // Velocidad de escritura en milisegundos
+}
+
+// Observar cambios en loginType y animar el título
+watch(loginType, (newValue) => {
+    const nuevoTitulo = newValue === 'admin' ? 'Panel de Administración' : 'Sistema de votación digital'
+    animarTexto(nuevoTitulo)
+})
+
+// Iniciar la animación al cargar
+onMounted(() => {
+    animarTexto(tituloLogin.value)
+})
 
 // En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
 const API_URL = '/api'
@@ -123,6 +158,18 @@ const handleStudentLogin = async () => {
     // Validar DNI (8 dígitos)
     if (studentDni.value.length !== 8 || !/^\d+$/.test(studentDni.value)) {
         alert('Por favor, ingrese un DNI válido (8 dígitos)')
+        return
+    }
+
+    // Validar confirmación de DNI
+    if (studentDniConfirm.value.length !== 8 || !/^\d+$/.test(studentDniConfirm.value)) {
+        alert('Por favor, confirme su DNI correctamente (8 dígitos)')
+        return
+    }
+
+    // Verificar que ambos DNI coincidan
+    if (studentDni.value !== studentDniConfirm.value) {
+        alert('Los DNI no coinciden. Por favor, verifique e intente nuevamente.')
         return
     }
 
@@ -155,8 +202,9 @@ const handleStudentLogin = async () => {
                 if (countdown.value <= 0) {
                     clearInterval(interval)
                     mostrarModalYaVoto.value = false
-                    loginType.value = 'select'
+                    loginType.value = 'student'
                     studentDni.value = ''
+                    studentDniConfirm.value = ''
                 }
             }, 1000)
         } else {
@@ -213,99 +261,149 @@ const handleAdminLogin = async () => {
     min-height: 100vh;
     overflow: hidden;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    position: relative;
 }
 
 .login-layout {
-    display: grid;
-    grid-template-columns: 58% 42%;
     min-height: 100vh;
-
-    background-color: #f9fafb;
+    position: relative;
 }
 
-/* Sección izquierda con imagen de fondo */
+/* Sección izquierda con imagen de fondo - Ahora ocupa todo */
 .background-section {
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-image: url('@/assets/cole/portada_fondo.png');
     background-size: cover;
     background-position: center;
-    overflow: hidden;
-
-    /* AGREGA ESTA LÍNEA */
-    border-bottom-right-radius: 550px;
-    /* Puedes aumentar o disminuir este número para cambiar la curvatura */
+    z-index: 0;
 }
 
 .overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
-    border-bottom-right-radius: 80px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.08));
 }
 
-/* Sección derecha con formulario */
+/* Sección derecha con formulario - Ahora centrado sobre el fondo */
 .login-container {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f9fafb;
+    min-height: 100vh;
     padding: 40px;
+    z-index: 1;
 }
 
 .login-card {
     position: relative;
     width: 100%;
     max-width: 420px;
-    background: white;
-    /* CAMBIO: Aumenté el último valor (padding-bottom) a 80px para separar el texto */
-    padding: 28px 32px 80px 32px;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+    /* ✨ Glassmorphism Auténtico */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+
+    padding: 48px 40px 48px 40px;
+    border-radius: 24px;
+
+    /* Borde elegante en blanco semitransparente */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    /* Sombra elegante */
+    box-shadow:
+        0 8px 32px 0 rgba(31, 38, 135, 0.2),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+
+    animation: fadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .admin-link-corner {
-    position: absolute;
-    bottom: 20px;
-    right: 25px;
+    margin-top: 20px;
+    width: 100%;
+    text-align: right;
     background: none;
     border: none;
-    color: #9ca3af;
-    /* Color gris suave */
-    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
     text-decoration: underline;
-    /* Subrayado */
     cursor: pointer;
-    padding: 5px;
-    transition: color 0.2s;
+    padding: 8px;
+    transition: all 0.3s ease;
+    display: block;
 }
 
 .admin-link-corner:hover {
-    color: #4b5563;
-    /* Gris más oscuro al pasar el mouse */
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
 }
 
 .logo-container {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .logo {
-    width: 150px;
+    width: 190px;
     height: auto;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
 .title {
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 24px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 28px;
     text-align: center;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cursor {
+    display: inline-block;
+    margin-left: 4px;
+    animation: blink 1s infinite;
+    font-weight: 300;
+}
+
+@keyframes blink {
+
+    0%,
+    49% {
+        opacity: 1;
+    }
+
+    50%,
+    100% {
+        opacity: 0;
+    }
 }
 
 .subtitle {
     font-size: 0.95rem;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.9);
     margin-bottom: 18px;
     text-align: center;
 }
@@ -318,10 +416,10 @@ const handleAdminLogin = async () => {
 
 .btn {
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 1rem;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: all 0.3s ease;
     font-weight: 500;
     width: 100%;
     padding: 14px 24px;
@@ -332,24 +430,28 @@ const handleAdminLogin = async () => {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 18px;
+    padding: 16px 20px;
     text-align: left;
-    border: 2px solid #e5e7eb;
-    background: white;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px;
+    color: white;
 }
 
 .btn-student:hover {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.05);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .btn-admin:hover {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .icon-user {
@@ -358,7 +460,7 @@ const handleAdminLogin = async () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #10b981;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .icon-user svg {
@@ -369,88 +471,151 @@ const handleAdminLogin = async () => {
 .btn-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 
 .btn-text strong {
-    color: #1f2937;
-    font-size: 1rem;
+    color: white;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 .btn-text small {
-    color: #6b7280;
-    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
     font-weight: 400;
 }
 
 .btn-primary {
-    background: #10b981;
+    background: rgba(255, 255, 255, 0.2);
     color: white;
     margin-bottom: 12px;
+    font-weight: 600;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    margin-top: 8px;
+    transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
-    background: #059669;
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:disabled {
-    background: #9ca3af;
+    background: rgba(255, 255, 255, 0.1);
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .btn-link {
     background: transparent;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.9);
     text-align: left;
-    padding: 8px 0;
+    padding: 10px 0;
     font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .btn-link:hover {
-    color: #374151;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    padding-left: 8px;
 }
 
 .login-form {
-    animation: fadeIn 0.25s ease;
+    animation: fadeIn 0.3s ease;
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: #374151;
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
     font-size: 0.95rem;
 }
 
 .form-group input {
     width: 100%;
-    padding: 12px 14px;
-    border: 1.5px solid #d1d5db;
-    border-radius: 8px;
+    padding: 12px 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
     font-size: 1rem;
-    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    transition: all 0.3s ease;
     box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+}
+
+.input-with-icon {
+    position: relative;
+    width: 100%;
+}
+
+.input-with-icon input {
+    padding-right: 45px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.6);
+    transition: all 0.3s ease;
+    border-radius: 6px;
+}
+
+.toggle-password:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-password:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle-password svg {
+    width: 20px;
+    height: 20px;
 }
 
 .help-text {
     text-align: center;
     font-size: 0.9rem;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.8);
     margin-top: 15px;
 }
 
 .link {
-    color: #10b981;
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
     font-weight: 500;
 }
@@ -459,29 +624,13 @@ const handleAdminLogin = async () => {
     text-decoration: underline;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @media (max-width: 1024px) {
-    .login-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .background-section {
-        display: none;
-    }
-
     .login-container {
         padding: 20px;
+    }
+
+    .login-card {
+        max-width: 100%;
     }
 }
 
@@ -498,6 +647,10 @@ const handleAdminLogin = async () => {
         padding: 12px 20px;
         font-size: 0.95rem;
     }
+
+    .login-card {
+        padding: 40px 28px 60px 28px;
+    }
 }
 
 /* Modal para estudiante que ya votó */
@@ -507,7 +660,7 @@ const handleAdminLogin = async () => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -516,13 +669,16 @@ const handleAdminLogin = async () => {
 }
 
 .modal-ya-voto {
-    background: white;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 20px;
     padding: 40px;
     max-width: 450px;
     width: 90%;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.4s ease;
 }
 
@@ -541,7 +697,8 @@ const handleAdminLogin = async () => {
 .modal-icon {
     width: 80px;
     height: 80px;
-    background: #4CAF50;
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     color: white;
     border-radius: 50%;
     display: flex;
@@ -563,19 +720,20 @@ const handleAdminLogin = async () => {
 }
 
 .modal-ya-voto h2 {
-    color: #333;
+    color: white;
     margin-bottom: 15px;
     font-size: 1.8em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .modal-ya-voto p {
-    color: #666;
+    color: rgba(255, 255, 255, 0.9);
     line-height: 1.6;
     margin-bottom: 10px;
 }
 
 .thank-you {
-    color: #4CAF50;
+    color: rgba(255, 255, 255, 0.95);
     font-weight: 500;
     font-size: 1.1em;
     margin-top: 15px;
@@ -584,9 +742,10 @@ const handleAdminLogin = async () => {
 .countdown {
     margin-top: 25px;
     padding: 15px;
-    background: #f5f5f5;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 10px;
-    color: #667eea;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 500;
     font-size: 1.1em;
 }
