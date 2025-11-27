@@ -221,7 +221,6 @@
                                 <th>Nombre Completo</th>
                                 <th>Grado</th>
                                 <th>Sección</th>
-                                <th>Candidato Votado</th>
                                 <th>Fecha de Voto</th>
                             </tr>
                         </thead>
@@ -232,12 +231,6 @@
                                 <td>{{ votante.nombre_completo }}</td>
                                 <td>{{ votante.grado }}</td>
                                 <td>{{ votante.seccion }}</td>
-                                <td>
-                                    <div class="candidato-votado">
-                                        <span class="candidato-nombre">{{ votante.candidato_nombre }}</span>
-                                        <span class="candidato-lista-small">{{ votante.candidato_lista }}</span>
-                                    </div>
-                                </td>
                                 <td>{{ formatearFecha(votante.fecha_voto) }}</td>
                             </tr>
                         </tbody>
@@ -372,9 +365,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx'
+import Pusher from 'pusher-js'
 import {
     User, LogOut, BarChart3, Vote, Users, TrendingUp, Trophy,
     Plus, Edit2, Trash2, CheckCircle2, Search, Loader2,
@@ -407,6 +401,9 @@ const resultados = ref([])
 const candidatos = ref([])
 const votantes = ref([])
 const searchVotante = ref('')
+const pusherClient = ref(null)
+const realtimeChannel = ref(null)
+const pollingId = ref(null)
 
 // Formulario de candidato
 const mostrarFormularioCandidato = ref(false)
@@ -422,6 +419,11 @@ const formCandidato = ref({
 
 // En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
 const API_URL = '/api'
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || ''
+const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'us2'
+const PUSHER_CHANNEL = import.meta.env.VITE_PUSHER_CHANNEL || 'votos'
+const PUSHER_EVENT = import.meta.env.VITE_PUSHER_EVENT || 'registrado'
+const POLLING_INTERVAL = Number(import.meta.env.VITE_VOTES_POLL_MS) || 5000
 
 const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -450,6 +452,22 @@ onMounted(() => {
     cargarDashboard()
     cargarCandidatos()
     cargarVotantes()
+    inicializarRealtime()
+    iniciarPolling()
+})
+
+onUnmounted(() => {
+    if (realtimeChannel.value && pusherClient.value) {
+        realtimeChannel.value.unbind(PUSHER_EVENT)
+        pusherClient.value.unsubscribe(PUSHER_CHANNEL)
+    }
+
+    if (pusherClient.value) {
+        pusherClient.value.disconnect()
+        pusherClient.value = null
+    }
+
+    detenerPolling()
 })
 
 const cargarDashboard = async () => {
@@ -521,8 +539,6 @@ const exportarVotantesExcel = () => {
         'Nombre Completo': v.nombre_completo,
         Grado: v.grado,
         Sección: v.seccion,
-        'Candidato Votado': v.candidato_nombre,
-        Lista: v.candidato_lista,
         'Fecha de Voto': formatearFecha(v.fecha_voto)
     }))
 
@@ -532,6 +548,47 @@ const exportarVotantesExcel = () => {
 
     const fechaArchivo = new Date().toISOString().split('T')[0]
     XLSX.writeFile(libro, `votantes-${fechaArchivo}.xlsx`)
+}
+
+const inicializarRealtime = () => {
+    if (!PUSHER_KEY) {
+        console.warn('Pusher no configurado, omitiendo tiempo real')
+        return
+    }
+
+    try {
+        pusherClient.value = new Pusher(PUSHER_KEY, {
+            cluster: PUSHER_CLUSTER,
+            forceTLS: true
+        })
+
+        realtimeChannel.value = pusherClient.value.subscribe(PUSHER_CHANNEL)
+        realtimeChannel.value.bind(PUSHER_EVENT, () => {
+            cargarDashboard()
+            cargarVotantes()
+        })
+
+        pusherClient.value.connection.bind('error', (err) => {
+            console.warn('Error en Pusher:', err)
+        })
+    } catch (error) {
+        console.error('No se pudo inicializar Pusher', error)
+    }
+}
+
+const iniciarPolling = () => {
+    detenerPolling()
+    pollingId.value = setInterval(() => {
+        cargarDashboard()
+        cargarVotantes()
+    }, POLLING_INTERVAL)
+}
+
+const detenerPolling = () => {
+    if (pollingId.value) {
+        clearInterval(pollingId.value)
+        pollingId.value = null
+    }
 }
 
 const calcularPorcentaje = (votos) => {
@@ -727,7 +784,7 @@ const cancelarCerrarSesion = () => {
 }
 
 .admin-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
     color: white;
     padding: 20px 0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -802,13 +859,13 @@ const cancelarCerrarSesion = () => {
 }
 
 .tab:hover {
-    color: #667eea;
+    color: #2e7d32;
     background: #f5f7fa;
 }
 
 .tab.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
+    color: #2e7d32;
+    border-bottom-color: #2e7d32;
 }
 
 .tab-icon {
@@ -973,12 +1030,12 @@ const cancelarCerrarSesion = () => {
 }
 
 .btn-primary {
-    background: #667eea;
+    background: #2e7d32;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #5568d3;
+    background: #256428;
 }
 
 .btn-secondary {
@@ -1043,7 +1100,7 @@ td {
 .badge {
     display: inline-block;
     padding: 4px 12px;
-    background: #667eea;
+    background: #2e7d32;
     color: white;
     border-radius: 20px;
     font-size: 0.85em;
@@ -1114,7 +1171,7 @@ td {
 
 .search-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e7d32;
 }
 
 .loading {
@@ -1239,7 +1296,7 @@ td {
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e7d32;
 }
 
 .form-group small {
@@ -1263,7 +1320,7 @@ td {
     justify-content: center;
     gap: 10px;
     padding: 12px 24px;
-    background: #667eea;
+    background: #2e7d32;
     color: white;
     border-radius: 8px;
     cursor: pointer;
@@ -1273,7 +1330,7 @@ td {
 }
 
 .file-label:hover {
-    background: #5568d3;
+    background: #256428;
 }
 
 .image-preview {
@@ -1391,7 +1448,7 @@ td {
 }
 
 .stat-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
 }
 
 .stat-info {
@@ -1505,21 +1562,9 @@ td {
     font-family: 'Courier New', monospace;
 }
 
-.candidato-votado {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .candidato-nombre {
     font-weight: 500;
     color: #333;
-}
-
-.candidato-lista-small {
-    font-size: 0.85em;
-    color: #667eea;
-    font-weight: 500;
 }
 
 .empty-state {

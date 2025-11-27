@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@libsql/client';
+import { notifyVotoRegistrado } from './lib/realtime.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,7 @@ const corsOptions = {
     credentials: true,
     optionsSuccessStatus: 200
 };
+
 
 // Middleware
 app.use(cors(corsOptions));
@@ -197,6 +199,12 @@ app.post('/api/votar', async (req, res) => {
                 VALUES (?, ?, datetime('now', '-5 hours'))
             `,
             args: [estudianteId, candidatoId]
+        });
+
+        await notifyVotoRegistrado({
+            estudianteId,
+            candidatoId,
+            timestamp: new Date().toISOString()
         });
 
         res.json({
