@@ -699,14 +699,11 @@ const cerrarFormulario = () => {
 
 const formatearFecha = (fecha) => {
     if (!fecha) return '-'
-    const fechaLocal = new Date(fecha)
-    const cincoHorasMs = 5 * 60 * 60 * 1000
-    const ajustada = new Date(fechaLocal.getTime() - cincoHorasMs)
     return new Intl.DateTimeFormat('es-PE', {
         timeZone: 'America/Lima',
         dateStyle: 'short',
         timeStyle: 'medium'
-    }).format(ajustada)
+    }).format(new Date(fecha))
 }
 
 const cerrarSesion = () => {
