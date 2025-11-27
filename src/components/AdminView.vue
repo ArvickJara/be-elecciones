@@ -194,10 +194,17 @@
                     <h2>Estudiantes que Votaron</h2>
                 </div>
 
-                <div class="search-box">
-                    <Search :size="20" class="search-icon" />
-                    <input v-model="searchVotante" type="text" placeholder="Buscar por DNI o nombre..."
-                        class="search-input" />
+                <div class="votantes-toolbar">
+                    <div class="search-box">
+                        <Search :size="20" class="search-icon" />
+                        <input v-model="searchVotante" type="text" placeholder="Buscar por DNI o nombre..."
+                            class="search-input" />
+                    </div>
+                    <button class="btn btn-export" @click="exportarVotantesExcel"
+                        :disabled="votantesFiltrados.length === 0">
+                        <Download :size="18" />
+                        Exportar Excel
+                    </button>
                 </div>
 
                 <div v-if="loadingVotantes" class="loading">
@@ -367,10 +374,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import * as XLSX from 'xlsx'
 import {
     User, LogOut, BarChart3, Vote, Users, TrendingUp, Trophy,
     Plus, Edit2, Trash2, CheckCircle2, Search, Loader2,
-    AlertCircle, X, UserPlus
+    AlertCircle, X, UserPlus, Download
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -499,6 +507,31 @@ const cargarVotantes = async () => {
     } finally {
         loadingVotantes.value = false
     }
+}
+
+const exportarVotantesExcel = () => {
+    if (!votantesFiltrados.value.length) {
+        alert('No hay votantes para exportar')
+        return
+    }
+
+    const datos = votantesFiltrados.value.map((v, index) => ({
+        '#': index + 1,
+        DNI: v.dni,
+        'Nombre Completo': v.nombre_completo,
+        Grado: v.grado,
+        Sección: v.seccion,
+        'Candidato Votado': v.candidato_nombre,
+        Lista: v.candidato_lista,
+        'Fecha de Voto': formatearFecha(v.fecha_voto)
+    }))
+
+    const hoja = XLSX.utils.json_to_sheet(datos)
+    const libro = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(libro, hoja, 'Votantes')
+
+    const fechaArchivo = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(libro, `votantes-${fechaArchivo}.xlsx`)
 }
 
 const calcularPorcentaje = (votos) => {
@@ -666,8 +699,14 @@ const cerrarFormulario = () => {
 
 const formatearFecha = (fecha) => {
     if (!fecha) return '-'
-    const date = new Date(fecha)
-    return date.toLocaleString('es-PE')
+    const fechaLocal = new Date(fecha)
+    const cincoHorasMs = 5 * 60 * 60 * 1000
+    const ajustada = new Date(fechaLocal.getTime() - cincoHorasMs)
+    return new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        dateStyle: 'short',
+        timeStyle: 'medium'
+    }).format(ajustada)
 }
 
 const cerrarSesion = () => {
@@ -1059,6 +1098,15 @@ td {
     margin-bottom: 20px;
 }
 
+.votantes-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
 .search-input {
     width: 100%;
     padding: 12px 20px;
@@ -1394,6 +1442,23 @@ td {
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 1em;
+}
+
+.btn-export {
+    background: #2e7d32;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-export:hover {
+    background: #256428;
+}
+
+.btn-export:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .btn-icon {

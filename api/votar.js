@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         await db.execute({
             sql: `
                 INSERT INTO votos (estudiante_id, candidato_id, fecha_voto)
-                VALUES (?, ?, datetime('now'))
+                VALUES (?, ?, datetime('now', '-5 hours'))
             `,
             args: [estudianteId, candidatoId]
         });
