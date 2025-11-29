@@ -5,6 +5,10 @@
             <div class="header-content">
                 <h1>Panel de Administración</h1>
                 <div class="admin-info">
+                    <span class="ws-status" :class="{ connected: wsConnected }">
+                        <span class="ws-indicator"></span>
+                        {{ wsConnected ? 'Tiempo Real' : 'Desconectado' }}
+                    </span>
                     <span class="admin-name">
                         <User :size="20" />
                         {{ adminUsername }}
@@ -94,7 +98,7 @@
                                         backgroundColor: getColorBarra(candidato)
                                     }">
                                         <span class="bar-percentage">{{ calcularPorcentaje(candidato.total_votos)
-                                            }}%</span>
+                                        }}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -365,7 +369,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
     User, LogOut, BarChart3, Vote, Users, TrendingUp, Trophy,
@@ -378,6 +382,10 @@ const router = useRouter()
 // Obtener datos del admin desde sessionStorage
 const adminData = sessionStorage.getItem('admin')
 const adminUsername = ref(adminData ? JSON.parse(adminData).username : 'Admin')
+
+// WebSocket
+let ws = null
+const wsConnected = ref(false)
 
 // Estado
 const activeTab = ref('dashboard')
@@ -442,6 +450,65 @@ onMounted(() => {
     cargarDashboard()
     cargarCandidatos()
     cargarVotantes()
+    conectarWebSocket()
+})
+
+// Conectar al WebSocket
+const conectarWebSocket = () => {
+    // Determinar la URL del WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsHost = import.meta.env.DEV ? 'localhost:3000' : window.location.host
+    const wsUrl = `${wsProtocol}//${wsHost}`
+
+    console.log('🔌 Conectando a WebSocket:', wsUrl)
+
+    ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+        console.log('✅ WebSocket conectado')
+        wsConnected.value = true
+    }
+
+    ws.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data)
+            console.log('📨 Mensaje recibido:', message)
+
+            // Manejar diferentes tipos de eventos
+            if (message.event === 'voto_registrado') {
+                console.log('🗳️ Nuevo voto registrado, actualizando datos...')
+                cargarDashboard()
+                cargarVotantes()
+            } else if (message.event === 'candidatos_actualizados') {
+                console.log('👤 Candidatos actualizados, recargando...')
+                cargarCandidatos()
+                cargarDashboard()
+            }
+        } catch (error) {
+            console.error('Error procesando mensaje WebSocket:', error)
+        }
+    }
+
+    ws.onclose = () => {
+        console.log('❌ WebSocket desconectado')
+        wsConnected.value = false
+        // Intentar reconectar después de 3 segundos
+        setTimeout(() => {
+            console.log('🔄 Intentando reconectar...')
+            conectarWebSocket()
+        }, 3000)
+    }
+
+    ws.onerror = (error) => {
+        console.error('❌ Error en WebSocket:', error)
+    }
+}
+
+// Desconectar WebSocket al desmontar el componente
+onUnmounted(() => {
+    if (ws) {
+        ws.close()
+    }
 })
 
 const cargarDashboard = async () => {
@@ -719,6 +786,46 @@ const cancelarCerrarSesion = () => {
 
 .admin-name {
     font-weight: 500;
+}
+
+.ws-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ws-status.connected {
+    color: white;
+}
+
+.ws-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.ws-status.connected .ws-indicator {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .btn-logout {

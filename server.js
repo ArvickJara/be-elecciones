@@ -2,9 +2,14 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@libsql/client';
+import { WebSocketServer } from 'ws';
+import http from 'http';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Crear servidor HTTP
+const server = http.createServer(app);
 
 // Configuración de CORS para producción
 const corsOptions = {
@@ -22,6 +27,38 @@ const db = createClient({
     url: process.env.TURSO_DATABASE_URL,
     authToken: process.env.TURSO_AUTH_TOKEN,
 });
+
+// Configurar WebSocket Server
+const wss = new WebSocketServer({ server });
+
+// Mantener lista de clientes conectados
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+    console.log('✅ Nuevo cliente WebSocket conectado');
+    clients.add(ws);
+
+    ws.on('close', () => {
+        console.log('❌ Cliente WebSocket desconectado');
+        clients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+        console.error('Error en WebSocket:', error);
+        clients.delete(ws);
+    });
+});
+
+// Función para notificar a todos los clientes
+function broadcastUpdate(event, data) {
+    const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    clients.forEach((client) => {
+        if (client.readyState === 1) { // 1 = OPEN
+            client.send(message);
+        }
+    });
+    console.log(`📡 Broadcast enviado: ${event}`, data);
+}
 
 // ==================== RUTAS ====================
 
@@ -197,6 +234,12 @@ app.post('/api/votar', async (req, res) => {
                 VALUES (?, ?, datetime('now'))
             `,
             args: [estudianteId, candidatoId]
+        });
+
+        // Notificar a todos los clientes conectados
+        broadcastUpdate('voto_registrado', {
+            candidatoId,
+            timestamp: new Date().toISOString()
         });
 
         res.json({
@@ -390,6 +433,12 @@ app.post('/api/admin/candidatos', async (req, res) => {
             ]
         });
 
+        // Notificar cambio en candidatos
+        broadcastUpdate('candidatos_actualizados', {
+            action: 'create',
+            timestamp: new Date().toISOString()
+        });
+
         res.json({
             success: true,
             message: 'Candidato creado exitosamente'
@@ -435,6 +484,13 @@ app.put('/api/admin/candidatos/:id', async (req, res) => {
             ]
         });
 
+        // Notificar cambio en candidatos
+        broadcastUpdate('candidatos_actualizados', {
+            action: 'update',
+            candidatoId: id,
+            timestamp: new Date().toISOString()
+        });
+
         res.json({
             success: true,
             message: 'Candidato actualizado exitosamente'
@@ -473,6 +529,13 @@ app.delete('/api/admin/candidatos/:id', async (req, res) => {
         await db.execute({
             sql: 'DELETE FROM candidatos WHERE id = ?',
             args: [id]
+        });
+
+        // Notificar cambio en candidatos
+        broadcastUpdate('candidatos_actualizados', {
+            action: 'delete',
+            candidatoId: id,
+            timestamp: new Date().toISOString()
         });
 
         res.json({
@@ -582,7 +645,8 @@ app.post('/api/cloudinary/signature', async (req, res) => {
 
 // ==================== SERVIDOR ====================
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`🚀 Servidor HTTP corriendo en http://localhost:${PORT}`);
+    console.log(`🔌 Servidor WebSocket corriendo en ws://localhost:${PORT}`);
     console.log(`📊 Base de datos conectada a Turso`);
 });
