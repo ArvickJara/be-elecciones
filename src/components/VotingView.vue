@@ -178,80 +178,112 @@ const cerrarSesion = () => {
 <style scoped>
 .voting-container {
     min-height: 100vh;
-    background: #f3f3f3;
-    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.voting-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('@/assets/cole/portada2.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    opacity: 1;
+    z-index: 0;
 }
 
 .voting-header {
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    padding: 20px 40px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    border-bottom: 3px solid #2e7d32;
 }
 
 .student-info h2 {
-    margin: 0 0 10px 0;
-    color: #333;
+    margin: 0 0 8px 0;
+    color: #1b5e20;
+    font-size: 1.5em;
+    font-weight: 700;
 }
 
 .info-detail {
-    margin: 5px 0;
-    color: #666;
-    font-size: 0.9em;
+    margin: 4px 0;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.info-detail strong {
+    color: #2e7d32;
 }
 
 .btn-logout {
-    padding: 10px 20px;
-    background: #f44336;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 25px;
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.95em;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(229, 57, 53, 0.3);
 }
 
 .btn-logout:hover {
-    background: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4);
 }
 
 .voting-content {
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 40px;
 }
 
 .main-title {
     text-align: center;
-    color: #333;
-    margin-bottom: 10px;
-    font-size: 2em;
+    color: white;
+    margin-bottom: 8px;
+    font-size: 2.8em;
+    font-weight: 800;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+    letter-spacing: -0.5px;
 }
 
 .subtitle {
     text-align: center;
-    color: #666;
-    margin-bottom: 30px;
-    font-size: 1.1em;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 50px;
+    font-size: 1.3em;
+    font-weight: 300;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .loading {
     text-align: center;
-    padding: 40px;
+    padding: 60px;
 }
 
 .spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-top: 5px solid white;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
+    width: 60px;
+    height: 60px;
+    animation: spin 0.8s linear infinite;
     margin: 0 auto 20px;
 }
 
@@ -265,161 +297,260 @@ const cerrarSesion = () => {
     }
 }
 
+.loading p {
+    color: white;
+    font-size: 1.1em;
+}
+
 .error-message {
     text-align: center;
     padding: 40px;
-    color: #f44336;
+    color: white;
+    background: rgba(244, 67, 54, 0.9);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
 }
 
 .candidatos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
 }
 
 .candidato-card {
-    border: 3px solid #e0e0e0;
-    border-radius: 15px;
+    background: white;
+    border-radius: 20px;
     overflow: hidden;
     cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    position: relative;
+}
+
+.candidato-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    border: 3px solid transparent;
     transition: all 0.3s ease;
-    background: white;
+    pointer-events: none;
 }
 
 .candidato-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
 }
 
 .candidato-card.selected {
-    border-color: #4CAF50;
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+    transform: translateY(-10px) scale(1.03);
+    box-shadow: 0 20px 60px rgba(46, 125, 50, 0.4);
+}
+
+.candidato-card.selected::before {
+    border-color: #2e7d32;
 }
 
 .card-header {
     position: relative;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 20px;
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+    padding: 30px 20px 25px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
 }
 
 .candidato-foto {
-    width: 120px;
-    height: 120px;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
-    border: 5px solid white;
+    border: 6px solid white;
     background: white;
     object-fit: cover;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.candidato-card:hover .candidato-foto {
+    transform: scale(1.08);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
 }
 
 .candidato-lista {
-    background: rgba(255, 255, 255, 0.95);
-    color: #667eea;
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-weight: bold;
+    background: white;
+    color: #1b5e20;
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-weight: 700;
     margin-top: 15px;
-    font-size: 0.9em;
+    font-size: 1em;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.5px;
 }
 
 .card-body {
-    padding: 20px;
+    padding: 25px;
+    background: linear-gradient(to bottom, #fafafa 0%, white 100%);
 }
 
 .card-body h3 {
-    color: #333;
-    margin-bottom: 15px;
+    color: #1b5e20;
+    margin-bottom: 18px;
     text-align: center;
+    font-size: 1.4em;
+    font-weight: 700;
 }
 
 .propuestas {
-    background: #f5f5f5;
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 10px;
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    margin-top: 12px;
+    border-left: 4px solid #2e7d32;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .propuestas h4 {
-    color: #667eea;
-    margin: 0 0 10px 0;
-    font-size: 0.95em;
+    color: #2e7d32;
+    margin: 0 0 12px 0;
+    font-size: 1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .propuestas p {
-    color: #666;
+    color: #555;
     margin: 0;
-    font-size: 0.9em;
-    line-height: 1.5;
+    font-size: 0.95em;
+    line-height: 1.7;
 }
 
 .card-footer {
-    padding: 15px;
+    padding: 20px;
     text-align: center;
-    min-height: 50px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9f9f9;
 }
 
 .check-icon {
-    background: #4CAF50;
+    background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
     color: white;
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5em;
+    font-size: 1.8em;
     font-weight: bold;
+    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+    animation: checkBounce 0.5s ease;
+}
+
+@keyframes checkBounce {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 .voting-actions {
     text-align: center;
-    margin-top: 30px;
+    margin-top: 50px;
 }
 
 .btn {
-    padding: 12px 24px;
+    padding: 14px 28px;
     border: none;
-    border-radius: 8px;
+    border-radius: 25px;
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .btn-vote {
-    background: #4CAF50;
+    background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
     color: white;
-    padding: 15px 50px;
-    font-size: 1.2em;
+    padding: 18px 60px;
+    font-size: 1.3em;
+    box-shadow: 0 8px 30px rgba(76, 175, 80, 0.4);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .btn-vote:hover:not(:disabled) {
-    background: #45a049;
-    transform: scale(1.05);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(76, 175, 80, 0.5);
 }
 
 .btn-vote:disabled {
-    background: #cccccc;
+    background: linear-gradient(135deg, #bdbdbd 0%, #9e9e9e 100%);
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 .btn-primary {
-    background: #667eea;
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
     color: white;
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
 }
 
 .btn-primary:hover {
-    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 125, 50, 0.4);
 }
 
 .btn-secondary {
-    background: #e0e0e0;
+    background: #f5f5f5;
     color: #333;
+    border: 2px solid #ddd;
 }
 
 .btn-secondary:hover {
-    background: #d0d0d0;
+    background: #e8e8e8;
+    border-color: #ccc;
 }
 
 .modal-overlay {
@@ -428,43 +559,73 @@ const cerrarSesion = () => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .modal-content {
     background: white;
-    border-radius: 15px;
-    padding: 30px;
+    border-radius: 20px;
+    padding: 40px;
     max-width: 500px;
     width: 90%;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .modal-content h2 {
-    color: #333;
-    margin-bottom: 15px;
+    color: #1b5e20;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    font-weight: 700;
 }
 
 .modal-content p {
-    color: #666;
-    margin-bottom: 10px;
-    line-height: 1.6;
+    color: #555;
+    margin-bottom: 12px;
+    line-height: 1.8;
+    font-size: 1.05em;
 }
 
 .modal-content .warning {
-    color: #ff9800;
-    font-weight: 500;
-    margin-top: 20px;
+    color: #ff6f00;
+    font-weight: 600;
+    margin-top: 25px;
+    padding: 15px;
+    background: #fff3e0;
+    border-radius: 10px;
+    border-left: 4px solid #ff6f00;
 }
 
 .modal-actions {
     display: flex;
-    gap: 10px;
-    margin-top: 25px;
+    gap: 15px;
+    margin-top: 30px;
 }
 
 .modal-actions .btn {
@@ -475,14 +636,30 @@ const cerrarSesion = () => {
     .voting-header {
         flex-direction: column;
         gap: 15px;
+        padding: 20px;
+    }
+
+    .voting-content {
+        padding: 20px;
+        margin: 20px auto;
     }
 
     .candidatos-grid {
         grid-template-columns: 1fr;
+        gap: 25px;
     }
 
     .main-title {
-        font-size: 1.5em;
+        font-size: 2em;
+    }
+
+    .subtitle {
+        font-size: 1.1em;
+    }
+
+    .btn-vote {
+        padding: 16px 40px;
+        font-size: 1.1em;
     }
 }
 </style>

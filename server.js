@@ -4,6 +4,7 @@ import cors from 'cors';
 import { createClient } from '@libsql/client';
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import { notifyVotoRegistrado } from './lib/realtime.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ const corsOptions = {
     credentials: true,
     optionsSuccessStatus: 200
 };
+
 
 // Middleware
 app.use(cors(corsOptions));
@@ -231,15 +233,9 @@ app.post('/api/votar', async (req, res) => {
         await db.execute({
             sql: `
                 INSERT INTO votos (estudiante_id, candidato_id, fecha_voto)
-                VALUES (?, ?, datetime('now'))
+                VALUES (?, ?, datetime('now', '-5 hours'))
             `,
             args: [estudianteId, candidatoId]
-        });
-
-        // Notificar a todos los clientes conectados
-        broadcastUpdate('voto_registrado', {
-            candidatoId,
-            timestamp: new Date().toISOString()
         });
 
         res.json({
@@ -566,7 +562,7 @@ app.get('/api/admin/votantes', async (req, res) => {
                 pm.grado,
                 pm.seccion,
                 pm.nivel,
-                v.fecha_voto,
+                strftime('%Y-%m-%d %H:%M:%S', v.fecha_voto, '-5 hours') as fecha_voto,
                 c.nombre_completo as candidato_nombre,
                 c.lista as candidato_lista
             FROM votos v

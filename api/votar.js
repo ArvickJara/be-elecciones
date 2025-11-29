@@ -1,5 +1,6 @@
 // api/votar.js
 import { getDb } from './_db.js';
+import { notifyVotoRegistrado } from '../lib/realtime.js';
 
 export default async function handler(req, res) {
     // Configurar CORS
@@ -44,9 +45,15 @@ export default async function handler(req, res) {
         await db.execute({
             sql: `
                 INSERT INTO votos (estudiante_id, candidato_id, fecha_voto)
-                VALUES (?, ?, datetime('now'))
+                VALUES (?, ?, datetime('now', '-5 hours'))
             `,
             args: [estudianteId, candidatoId]
+        });
+
+        await notifyVotoRegistrado({
+            estudianteId,
+            candidatoId,
+            timestamp: new Date().toISOString()
         });
 
         res.json({

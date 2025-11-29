@@ -98,7 +98,7 @@
                                         backgroundColor: getColorBarra(candidato)
                                     }">
                                         <span class="bar-percentage">{{ calcularPorcentaje(candidato.total_votos)
-                                        }}%</span>
+                                            }}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -198,10 +198,17 @@
                     <h2>Estudiantes que Votaron</h2>
                 </div>
 
-                <div class="search-box">
-                    <Search :size="20" class="search-icon" />
-                    <input v-model="searchVotante" type="text" placeholder="Buscar por DNI o nombre..."
-                        class="search-input" />
+                <div class="votantes-toolbar">
+                    <div class="search-box">
+                        <Search :size="20" class="search-icon" />
+                        <input v-model="searchVotante" type="text" placeholder="Buscar por DNI o nombre..."
+                            class="search-input" />
+                    </div>
+                    <button class="btn btn-export" @click="exportarVotantesExcel"
+                        :disabled="votantesFiltrados.length === 0">
+                        <Download :size="18" />
+                        Exportar Excel
+                    </button>
                 </div>
 
                 <div v-if="loadingVotantes" class="loading">
@@ -218,7 +225,6 @@
                                 <th>Nombre Completo</th>
                                 <th>Grado</th>
                                 <th>Sección</th>
-                                <th>Candidato Votado</th>
                                 <th>Fecha de Voto</th>
                             </tr>
                         </thead>
@@ -229,12 +235,6 @@
                                 <td>{{ votante.nombre_completo }}</td>
                                 <td>{{ votante.grado }}</td>
                                 <td>{{ votante.seccion }}</td>
-                                <td>
-                                    <div class="candidato-votado">
-                                        <span class="candidato-nombre">{{ votante.candidato_nombre }}</span>
-                                        <span class="candidato-lista-small">{{ votante.candidato_lista }}</span>
-                                    </div>
-                                </td>
                                 <td>{{ formatearFecha(votante.fecha_voto) }}</td>
                             </tr>
                         </tbody>
@@ -371,10 +371,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import * as XLSX from 'xlsx'
+import Pusher from 'pusher-js'
 import {
     User, LogOut, BarChart3, Vote, Users, TrendingUp, Trophy,
     Plus, Edit2, Trash2, CheckCircle2, Search, Loader2,
-    AlertCircle, X, UserPlus
+    AlertCircle, X, UserPlus, Download
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -407,6 +409,9 @@ const resultados = ref([])
 const candidatos = ref([])
 const votantes = ref([])
 const searchVotante = ref('')
+const pusherClient = ref(null)
+const realtimeChannel = ref(null)
+const pollingId = ref(null)
 
 // Formulario de candidato
 const mostrarFormularioCandidato = ref(false)
@@ -422,6 +427,11 @@ const formCandidato = ref({
 
 // En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
 const API_URL = '/api'
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || ''
+const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'us2'
+const PUSHER_CHANNEL = import.meta.env.VITE_PUSHER_CHANNEL || 'votos'
+const PUSHER_EVENT = import.meta.env.VITE_PUSHER_EVENT || 'registrado'
+const POLLING_INTERVAL = Number(import.meta.env.VITE_VOTES_POLL_MS) || 5000
 
 const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -450,65 +460,6 @@ onMounted(() => {
     cargarDashboard()
     cargarCandidatos()
     cargarVotantes()
-    conectarWebSocket()
-})
-
-// Conectar al WebSocket
-const conectarWebSocket = () => {
-    // Determinar la URL del WebSocket
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsHost = import.meta.env.DEV ? 'localhost:3000' : window.location.host
-    const wsUrl = `${wsProtocol}//${wsHost}`
-
-    console.log('🔌 Conectando a WebSocket:', wsUrl)
-
-    ws = new WebSocket(wsUrl)
-
-    ws.onopen = () => {
-        console.log('✅ WebSocket conectado')
-        wsConnected.value = true
-    }
-
-    ws.onmessage = (event) => {
-        try {
-            const message = JSON.parse(event.data)
-            console.log('📨 Mensaje recibido:', message)
-
-            // Manejar diferentes tipos de eventos
-            if (message.event === 'voto_registrado') {
-                console.log('🗳️ Nuevo voto registrado, actualizando datos...')
-                cargarDashboard()
-                cargarVotantes()
-            } else if (message.event === 'candidatos_actualizados') {
-                console.log('👤 Candidatos actualizados, recargando...')
-                cargarCandidatos()
-                cargarDashboard()
-            }
-        } catch (error) {
-            console.error('Error procesando mensaje WebSocket:', error)
-        }
-    }
-
-    ws.onclose = () => {
-        console.log('❌ WebSocket desconectado')
-        wsConnected.value = false
-        // Intentar reconectar después de 3 segundos
-        setTimeout(() => {
-            console.log('🔄 Intentando reconectar...')
-            conectarWebSocket()
-        }, 3000)
-    }
-
-    ws.onerror = (error) => {
-        console.error('❌ Error en WebSocket:', error)
-    }
-}
-
-// Desconectar WebSocket al desmontar el componente
-onUnmounted(() => {
-    if (ws) {
-        ws.close()
-    }
 })
 
 const cargarDashboard = async () => {
@@ -565,6 +516,70 @@ const cargarVotantes = async () => {
         console.error('Error:', error)
     } finally {
         loadingVotantes.value = false
+    }
+}
+
+const exportarVotantesExcel = () => {
+    if (!votantesFiltrados.value.length) {
+        alert('No hay votantes para exportar')
+        return
+    }
+
+    const datos = votantesFiltrados.value.map((v, index) => ({
+        '#': index + 1,
+        DNI: v.dni,
+        'Nombre Completo': v.nombre_completo,
+        Grado: v.grado,
+        Sección: v.seccion,
+        'Fecha de Voto': formatearFecha(v.fecha_voto)
+    }))
+
+    const hoja = XLSX.utils.json_to_sheet(datos)
+    const libro = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(libro, hoja, 'Votantes')
+
+    const fechaArchivo = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(libro, `votantes-${fechaArchivo}.xlsx`)
+}
+
+const inicializarRealtime = () => {
+    if (!PUSHER_KEY) {
+        console.warn('Pusher no configurado, omitiendo tiempo real')
+        return
+    }
+
+    try {
+        pusherClient.value = new Pusher(PUSHER_KEY, {
+            cluster: PUSHER_CLUSTER,
+            forceTLS: true
+        })
+
+        realtimeChannel.value = pusherClient.value.subscribe(PUSHER_CHANNEL)
+        realtimeChannel.value.bind(PUSHER_EVENT, () => {
+            cargarDashboard()
+            cargarVotantes()
+        })
+
+        pusherClient.value.connection.bind('error', (err) => {
+            console.warn('Error en Pusher:', err)
+        })
+    } catch (error) {
+        console.error('No se pudo inicializar Pusher', error)
+    }
+}
+
+const iniciarPolling = () => {
+    detenerPolling()
+    pollingId.value = setInterval(() => {
+        cargarDashboard()
+        cargarVotantes()
+    }, POLLING_INTERVAL)
+}
+
+const detenerPolling = () => {
+    if (pollingId.value) {
+        clearInterval(pollingId.value)
+        pollingId.value = null
     }
 }
 
@@ -733,8 +748,11 @@ const cerrarFormulario = () => {
 
 const formatearFecha = (fecha) => {
     if (!fecha) return '-'
-    const date = new Date(fecha)
-    return date.toLocaleString('es-PE')
+    return new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        dateStyle: 'short',
+        timeStyle: 'medium'
+    }).format(new Date(fecha))
 }
 
 const cerrarSesion = () => {
@@ -758,7 +776,7 @@ const cancelarCerrarSesion = () => {
 }
 
 .admin-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
     color: white;
     padding: 20px 0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -873,13 +891,13 @@ const cancelarCerrarSesion = () => {
 }
 
 .tab:hover {
-    color: #667eea;
+    color: #2e7d32;
     background: #f5f7fa;
 }
 
 .tab.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
+    color: #2e7d32;
+    border-bottom-color: #2e7d32;
 }
 
 .tab-icon {
@@ -1044,12 +1062,12 @@ const cancelarCerrarSesion = () => {
 }
 
 .btn-primary {
-    background: #667eea;
+    background: #2e7d32;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #5568d3;
+    background: #256428;
 }
 
 .btn-secondary {
@@ -1114,7 +1132,7 @@ td {
 .badge {
     display: inline-block;
     padding: 4px 12px;
-    background: #667eea;
+    background: #2e7d32;
     color: white;
     border-radius: 20px;
     font-size: 0.85em;
@@ -1166,6 +1184,15 @@ td {
     margin-bottom: 20px;
 }
 
+.votantes-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
 .search-input {
     width: 100%;
     padding: 12px 20px;
@@ -1176,7 +1203,7 @@ td {
 
 .search-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e7d32;
 }
 
 .loading {
@@ -1301,7 +1328,7 @@ td {
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e7d32;
 }
 
 .form-group small {
@@ -1325,7 +1352,7 @@ td {
     justify-content: center;
     gap: 10px;
     padding: 12px 24px;
-    background: #667eea;
+    background: #2e7d32;
     color: white;
     border-radius: 8px;
     cursor: pointer;
@@ -1335,7 +1362,7 @@ td {
 }
 
 .file-label:hover {
-    background: #5568d3;
+    background: #256428;
 }
 
 .image-preview {
@@ -1453,7 +1480,7 @@ td {
 }
 
 .stat-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
 }
 
 .stat-info {
@@ -1503,6 +1530,23 @@ td {
     font-size: 1em;
 }
 
+.btn-export {
+    background: #2e7d32;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-export:hover {
+    background: #256428;
+}
+
+.btn-export:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .btn-icon {
     padding: 8px;
     background: none;
@@ -1550,21 +1594,9 @@ td {
     font-family: 'Courier New', monospace;
 }
 
-.candidato-votado {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .candidato-nombre {
     font-weight: 500;
     color: #333;
-}
-
-.candidato-lista-small {
-    font-size: 0.85em;
-    color: #667eea;
-    font-weight: 500;
 }
 
 .empty-state {

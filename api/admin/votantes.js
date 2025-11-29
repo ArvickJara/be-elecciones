@@ -26,7 +26,7 @@ export default async function handler(req, res) {
                 pm.grado,
                 pm.seccion,
                 pm.nivel,
-                v.fecha_voto,
+                strftime('%Y-%m-%d %H:%M:%S', v.fecha_voto, '-5 hours') as fecha_voto,
                 c.nombre_completo as candidato_nombre,
                 c.lista as candidato_lista
             FROM votos v

@@ -32,7 +32,7 @@ async function setupDatabase() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 estudiante_id INTEGER NOT NULL,
                 candidato_id INTEGER NOT NULL,
-                fecha_voto DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_voto DATETIME DEFAULT (datetime('now', '-5 hours')),
                 FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id),
                 FOREIGN KEY (candidato_id) REFERENCES candidatos(id),
                 UNIQUE(estudiante_id)
