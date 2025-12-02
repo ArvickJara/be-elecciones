@@ -4,7 +4,6 @@ import cors from 'cors';
 import { createClient } from '@libsql/client';
 import { WebSocketServer } from 'ws';
 import http from 'http';
-import { notifyVotoRegistrado } from './lib/realtime.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -236,6 +235,12 @@ app.post('/api/votar', async (req, res) => {
                 VALUES (?, ?, datetime('now', '-5 hours'))
             `,
             args: [estudianteId, candidatoId]
+        });
+
+        // Notificar a todos los clientes conectados
+        broadcastUpdate('voto_registrado', {
+            candidatoId,
+            timestamp: new Date().toISOString()
         });
 
         res.json({

@@ -98,7 +98,7 @@
                                         backgroundColor: getColorBarra(candidato)
                                     }">
                                         <span class="bar-percentage">{{ calcularPorcentaje(candidato.total_votos)
-                                            }}%</span>
+                                        }}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -460,6 +460,65 @@ onMounted(() => {
     cargarDashboard()
     cargarCandidatos()
     cargarVotantes()
+    conectarWebSocket()
+})
+
+// Conectar al WebSocket
+const conectarWebSocket = () => {
+    // Determinar la URL del WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsHost = import.meta.env.DEV ? 'localhost:3000' : window.location.host
+    const wsUrl = `${wsProtocol}//${wsHost}`
+
+    console.log('🔌 Conectando a WebSocket:', wsUrl)
+
+    ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+        console.log('✅ WebSocket conectado')
+        wsConnected.value = true
+    }
+
+    ws.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data)
+            console.log('📨 Mensaje recibido:', message)
+
+            // Manejar diferentes tipos de eventos
+            if (message.event === 'voto_registrado') {
+                console.log('🗳️ Nuevo voto registrado, actualizando datos...')
+                cargarDashboard()
+                cargarVotantes()
+            } else if (message.event === 'candidatos_actualizados') {
+                console.log('👤 Candidatos actualizados, recargando...')
+                cargarCandidatos()
+                cargarDashboard()
+            }
+        } catch (error) {
+            console.error('Error procesando mensaje WebSocket:', error)
+        }
+    }
+
+    ws.onclose = () => {
+        console.log('❌ WebSocket desconectado')
+        wsConnected.value = false
+        // Intentar reconectar después de 3 segundos
+        setTimeout(() => {
+            console.log('🔄 Intentando reconectar...')
+            conectarWebSocket()
+        }, 3000)
+    }
+
+    ws.onerror = (error) => {
+        console.error('❌ Error en WebSocket:', error)
+    }
+}
+
+// Desconectar WebSocket al desmontar el componente
+onUnmounted(() => {
+    if (ws) {
+        ws.close()
+    }
 })
 
 const cargarDashboard = async () => {

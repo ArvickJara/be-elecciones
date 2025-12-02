@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #007bff;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔌 Test de WebSocket</h1>
+
+    <div id="status" class="status disconnected">
+        ⚪ Desconectado
+    </div>
+
+    <div>
+        <button onclick="conectar()">Conectar</button>
+        <button onclick="desconectar()">Desconectar</button>
+        <button onclick="simularVoto()">Simular Voto</button>
+        <button onclick="limpiarLogs()">Limpiar Logs</button>
+    </div>
+
+    <h2>Logs:</h2>
+    <div id="logs"></div>
+
+    <script>
+        let ws = null;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log';
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = '🟢 Conectado';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '⚪ Desconectado';
+            }
+        }
+
+        function conectar() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('⚠️ Ya estás conectado');
+                return;
+            }
+
+            const wsUrl = 'ws://localhost:3000';
+            log(`🔌 Conectando a ${wsUrl}...`);
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                log('✅ WebSocket conectado exitosamente');
+                updateStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    log(`📨 Mensaje recibido: <br><pre>${JSON.stringify(message, null, 2)}</pre>`);
+                } catch (error) {
+                    log(`📨 Mensaje recibido (texto): ${event.data}`);
+                }
+            };
+
+            ws.onclose = () => {
+                log('❌ WebSocket desconectado');
+                updateStatus(false);
+            };
+
+            ws.onerror = (error) => {
+                log(`❌ Error en WebSocket: ${error.message || 'Error desconocido'}`);
+                updateStatus(false);
+            };
+        }
+
+        function desconectar() {
+            if (ws) {
+                log('🔌 Desconectando...');
+                ws.close();
+                ws = null;
+            } else {
+                log('⚠️ No hay conexión activa');
+            }
+        }
+
+        function simularVoto() {
+            log('🗳️ Simulando registro de voto...');
+
+            fetch('http://localhost:3000/api/votar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    estudianteId: Math.floor(Math.random() * 1000),
+                    candidatoId: 1
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    log(`✅ Respuesta del servidor: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`❌ Error al simular voto: ${error.message}`);
+                });
+        }
+
+        function limpiarLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('🗑️ Logs limpiados');
+        }
+
+        // Auto-conectar al cargar la página
+        window.onload = () => {
+            log('🚀 Página cargada. Listo para probar WebSocket.');
+            log('💡 Presiona "Conectar" para iniciar la conexión.');
+        };
+    </script>
+</body>
+
+</html>
