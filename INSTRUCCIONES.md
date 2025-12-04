@@ -23,8 +23,6 @@ npm run server
 
 El servidor estará disponible en: **http://localhost:3000**
 
-> Este servidor, además de los endpoints REST, dispara eventos en **Pusher** cada vez que se registra un voto. Mantén este proceso corriendo durante el desarrollo para que el panel de administración reciba las actualizaciones en vivo.
-
 ### 2. Iniciar el Frontend
 
 En otra terminal, ejecuta:
@@ -35,19 +33,13 @@ npm run dev
 
 La aplicación estará disponible en: **http://localhost:5174** (o el puerto que Vite asigne)
 
-Para que las notificaciones en tiempo real funcionen tanto en local como en producción, configura estas variables en tu `.env`:
+### 3. Actualización en Tiempo Real
+
+El panel de administración se actualiza automáticamente cada 5 segundos mediante **polling**. Esto funciona tanto en desarrollo como en producción (Vercel). Para cambiar el intervalo, configura esta variable en tu `.env`:
 
 ```
-PUSHER_APP_ID=tu_app_id
-PUSHER_KEY=tu_key
-PUSHER_SECRET=tu_secret
-PUSHER_CLUSTER=tu_cluster
-VITE_PUSHER_KEY=tu_key
-VITE_PUSHER_CLUSTER=tu_cluster
-VITE_VOTES_POLL_MS=5000 # intervalo de respaldo en ms para refrescar votos
+VITE_VOTES_POLL_MS=5000 # intervalo en milisegundos para refrescar datos
 ```
-
-El frontend usa `VITE_PUSHER_*` para conectarse, mientras que el backend dispara los eventos con las variables sin el prefijo.
 
 ## 📋 Flujo de Uso
 

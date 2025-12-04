@@ -372,7 +372,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx'
-import Pusher from 'pusher-js'
 import {
     User, LogOut, BarChart3, Vote, Users, TrendingUp, Trophy,
     Plus, Edit2, Trash2, CheckCircle2, Search, Loader2,
@@ -409,9 +408,8 @@ const resultados = ref([])
 const candidatos = ref([])
 const votantes = ref([])
 const searchVotante = ref('')
-const pusherClient = ref(null)
-const realtimeChannel = ref(null)
 const pollingId = ref(null)
+const pollingActivo = ref(false)
 
 // Formulario de candidato
 const mostrarFormularioCandidato = ref(false)
@@ -427,10 +425,6 @@ const formCandidato = ref({
 
 // En Vercel, las rutas /api/* se enrutan automáticamente a las funciones serverless
 const API_URL = '/api'
-const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || ''
-const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'us2'
-const PUSHER_CHANNEL = import.meta.env.VITE_PUSHER_CHANNEL || 'votos'
-const PUSHER_EVENT = import.meta.env.VITE_PUSHER_EVENT || 'registrado'
 const POLLING_INTERVAL = Number(import.meta.env.VITE_VOTES_POLL_MS) || 5000
 
 const tabs = [
@@ -460,65 +454,12 @@ onMounted(() => {
     cargarDashboard()
     cargarCandidatos()
     cargarVotantes()
-    conectarWebSocket()
+    iniciarPolling()
 })
 
-// Conectar al WebSocket
-const conectarWebSocket = () => {
-    // Determinar la URL del WebSocket
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsHost = import.meta.env.DEV ? 'localhost:3000' : window.location.host
-    const wsUrl = `${wsProtocol}//${wsHost}`
-
-    console.log('🔌 Conectando a WebSocket:', wsUrl)
-
-    ws = new WebSocket(wsUrl)
-
-    ws.onopen = () => {
-        console.log('✅ WebSocket conectado')
-        wsConnected.value = true
-    }
-
-    ws.onmessage = (event) => {
-        try {
-            const message = JSON.parse(event.data)
-            console.log('📨 Mensaje recibido:', message)
-
-            // Manejar diferentes tipos de eventos
-            if (message.event === 'voto_registrado') {
-                console.log('🗳️ Nuevo voto registrado, actualizando datos...')
-                cargarDashboard()
-                cargarVotantes()
-            } else if (message.event === 'candidatos_actualizados') {
-                console.log('👤 Candidatos actualizados, recargando...')
-                cargarCandidatos()
-                cargarDashboard()
-            }
-        } catch (error) {
-            console.error('Error procesando mensaje WebSocket:', error)
-        }
-    }
-
-    ws.onclose = () => {
-        console.log('❌ WebSocket desconectado')
-        wsConnected.value = false
-        // Intentar reconectar después de 3 segundos
-        setTimeout(() => {
-            console.log('🔄 Intentando reconectar...')
-            conectarWebSocket()
-        }, 3000)
-    }
-
-    ws.onerror = (error) => {
-        console.error('❌ Error en WebSocket:', error)
-    }
-}
-
-// Desconectar WebSocket al desmontar el componente
+// Desmontar componente
 onUnmounted(() => {
-    if (ws) {
-        ws.close()
-    }
+    detenerPolling()
 })
 
 const cargarDashboard = async () => {
@@ -601,34 +542,12 @@ const exportarVotantesExcel = () => {
     XLSX.writeFile(libro, `votantes-${fechaArchivo}.xlsx`)
 }
 
-const inicializarRealtime = () => {
-    if (!PUSHER_KEY) {
-        console.warn('Pusher no configurado, omitiendo tiempo real')
-        return
-    }
-
-    try {
-        pusherClient.value = new Pusher(PUSHER_KEY, {
-            cluster: PUSHER_CLUSTER,
-            forceTLS: true
-        })
-
-        realtimeChannel.value = pusherClient.value.subscribe(PUSHER_CHANNEL)
-        realtimeChannel.value.bind(PUSHER_EVENT, () => {
-            cargarDashboard()
-            cargarVotantes()
-        })
-
-        pusherClient.value.connection.bind('error', (err) => {
-            console.warn('Error en Pusher:', err)
-        })
-    } catch (error) {
-        console.error('No se pudo inicializar Pusher', error)
-    }
-}
-
 const iniciarPolling = () => {
     detenerPolling()
+    pollingActivo.value = true
+    wsConnected.value = true
+    console.log(`🔄 Polling iniciado cada ${POLLING_INTERVAL}ms`)
+    
     pollingId.value = setInterval(() => {
         cargarDashboard()
         cargarVotantes()
@@ -639,6 +558,9 @@ const detenerPolling = () => {
     if (pollingId.value) {
         clearInterval(pollingId.value)
         pollingId.value = null
+        pollingActivo.value = false
+        wsConnected.value = false
+        console.log('⏸️ Polling detenido')
     }
 }
 
