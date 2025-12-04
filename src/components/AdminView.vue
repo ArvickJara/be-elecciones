@@ -81,39 +81,53 @@
                     </div>
                 </div>
 
-                <!-- Gráficos -->
-                <div class="charts-section">
-                    <div class="chart-card">
-                        <h3>Resultados por Candidato</h3>
-                        <div v-if="loading" class="loading">Cargando...</div>
-                        <div v-else class="bar-chart">
-                            <div v-for="candidato in resultados" :key="candidato.id" class="bar-item">
-                                <div class="bar-info">
-                                    <span class="candidato-nombre">{{ candidato.nombre_completo }}</span>
-                                    <span class="candidato-votos">{{ candidato.total_votos }} votos</span>
+                <!-- Flash Electoral -->
+                <div class="flash-electoral">
+                    <div class="flash-header">
+                        <div class="flash-logo">
+                            <Vote :size="32" />
+                            <div class="flash-title-group">
+                                <h2>FLASH ELECTORAL</h2>
+                                <p>BOCA DE URNA - RESULTADOS EN VIVO</p>
+                            </div>
+                        </div>
+                        <div class="flash-year">2025</div>
+                    </div>
+
+                    <div v-if="loading" class="loading">
+                        <Loader2 :size="40" class="spin" />
+                        <p>Cargando resultados...</p>
+                    </div>
+                    
+                    <div v-else class="candidatos-resultados">
+                        <div v-for="(candidato, index) in resultadosOrdenados" :key="candidato.id" 
+                             class="candidato-resultado"
+                             :class="{ 'ganador': index === 0 }">
+                            <div class="candidato-header">
+                                <div class="candidato-foto-wrapper">
+                                    <img :src="candidato.foto_url" :alt="candidato.nombre_completo" class="candidato-foto-resultado" />
+                                    <div v-if="index === 0" class="corona-ganador">
+                                        <Trophy :size="24" />
+                                    </div>
                                 </div>
-                                <div class="bar-container">
-                                    <div class="bar-fill" :style="{
-                                        width: calcularPorcentaje(candidato.total_votos) + '%',
-                                        backgroundColor: getColorBarra(candidato)
-                                    }">
-                                        <span class="bar-percentage">{{ calcularPorcentaje(candidato.total_votos)
-                                        }}%</span>
+                                <div class="candidato-datos">
+                                    <div class="candidato-nombre-resultado">{{ candidato.nombre_completo }}</div>
+                                    <div class="candidato-lista-badge" :style="{ backgroundColor: getColorLista(index) }">
+                                        {{ candidato.lista }}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="chart-card">
-                        <h3>Distribución de Votos</h3>
-                        <div v-if="loading" class="loading">Cargando...</div>
-                        <div v-else class="pie-chart">
-                            <div v-for="(candidato, index) in resultados" :key="candidato.id" class="pie-item">
-                                <div class="pie-color" :style="{ backgroundColor: getColorBarra(candidato) }"></div>
-                                <span class="pie-label">{{ candidato.lista }}</span>
-                                <span class="pie-value">{{ candidato.total_votos }} ({{
-                                    calcularPorcentaje(candidato.total_votos) }}%)</span>
+                            
+                            <div class="barra-votos-wrapper">
+                                <div class="porcentaje-grande">{{ calcularPorcentaje(candidato.total_votos) }}%</div>
+                                <div class="barra-votos-container">
+                                    <div class="barra-votos-fill" 
+                                         :style="{ 
+                                             height: calcularPorcentaje(candidato.total_votos) + '%',
+                                             backgroundColor: getColorLista(index)
+                                         }">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -449,6 +463,10 @@ const votantesFiltrados = computed(() => {
     )
 })
 
+const resultadosOrdenados = computed(() => {
+    return [...resultados.value].sort((a, b) => b.total_votos - a.total_votos)
+})
+
 // Métodos
 onMounted(() => {
     cargarDashboard()
@@ -572,6 +590,18 @@ const calcularPorcentaje = (votos) => {
 const getColorBarra = (candidato) => {
     const colores = ['#4CAF50', '#2196F3', '#FF9800', '#E91E63', '#9C27B0']
     const index = resultados.value.findIndex(c => c.id === candidato.id)
+    return colores[index % colores.length]
+}
+
+const getColorLista = (index) => {
+    const colores = [
+        '#c62828', // Rojo intenso para el primero
+        '#1565c0', // Azul oscuro
+        '#2e7d32', // Verde
+        '#f57c00', // Naranja
+        '#6a1b9a', // Morado
+        '#00838f'  // Cyan oscuro
+    ]
     return colores[index % colores.length]
 }
 
@@ -929,101 +959,255 @@ const cancelarCerrarSesion = () => {
     color: #666;
 }
 
-.charts-section {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-}
-
-.chart-card {
-    background: white;
-    padding: 25px;
+/* Flash Electoral */
+.flash-electoral {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.chart-card h3 {
-    margin: 0 0 20px;
-    color: #333;
-}
-
-.bar-chart {
+    padding: 15px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+    border: 2px solid #c62828;
+    max-height: 75vh;
     display: flex;
     flex-direction: column;
-    gap: 15px;
 }
 
-.bar-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.bar-info {
+.flash-header {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9em;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #c62828;
+    flex-shrink: 0;
 }
 
-.candidato-nombre {
-    font-weight: 500;
-    color: #333;
-}
-
-.candidato-votos {
-    color: #666;
-}
-
-.bar-container {
-    height: 30px;
-    background: #f0f0f0;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.bar-fill {
-    height: 100%;
+.flash-logo {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    padding: 0 10px;
+    gap: 8px;
     color: white;
-    font-weight: 500;
-    font-size: 0.85em;
-    transition: width 0.5s ease;
 }
 
-.pie-chart {
+.flash-logo svg {
+    color: #c62828;
+    width: 24px;
+    height: 24px;
+}
+
+.flash-title-group h2 {
+    margin: 0;
+    color: white;
+    font-size: 1em;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+.flash-title-group p {
+    margin: 2px 0 0;
+    color: #c62828;
+    font-size: 0.6em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.flash-year {
+    background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
+    color: white;
+    font-size: 1.2em;
+    font-weight: 900;
+    padding: 6px 16px;
+    border-radius: 25px;
+    border: 2px solid white;
+    box-shadow: 0 3px 12px rgba(198, 40, 40, 0.4);
+}
+
+.candidatos-resultados {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-height: calc(75vh - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+}
+
+.candidatos-resultados::-webkit-scrollbar {
+    width: 6px;
+}
+
+.candidatos-resultados::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.candidatos-resultados::-webkit-scrollbar-thumb {
+    background: #c62828;
+    border-radius: 10px;
+}
+
+.candidato-resultado {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    align-items: center;
+    text-align: center;
+    height: 100%;
 }
 
-.pie-item {
+.candidato-resultado:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px);
+}
+
+.candidato-resultado.ganador {
+    background: linear-gradient(135deg, rgba(198, 40, 40, 0.25) 0%, rgba(183, 28, 28, 0.15) 100%);
+    border: 3px solid #c62828;
+    box-shadow: 0 0 25px rgba(198, 40, 40, 0.5);
+}
+
+.candidato-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.candidato-foto-wrapper {
+    position: relative;
+}
+
+.candidato-foto-resultado {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid white;
+    object-fit: cover;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.candidato-resultado.ganador .candidato-foto-resultado {
+    border-color: #ffd700;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+}
+
+.corona-ganador {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #1a1a1a;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: #f9f9f9;
-    border-radius: 8px;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 3px 10px rgba(255, 215, 0, 0.6);
+    animation: bounce 2s ease-in-out infinite;
 }
 
-.pie-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
+.corona-ganador svg {
+    width: 16px;
+    height: 16px;
 }
 
-.pie-label {
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.candidato-datos {
     flex: 1;
-    font-weight: 500;
-    color: #333;
-    font-size: 0.9em;
 }
 
-.pie-value {
-    color: #666;
+.candidato-nombre-resultado {
+    color: white;
     font-size: 0.9em;
+    font-weight: 700;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.candidato-lista-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 15px;
+    color: white;
+    font-weight: 700;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    margin-bottom: 3px;
+}
+
+.barra-votos-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: auto;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.barra-votos-container {
+    width: 50px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+}
+
+.barra-votos-fill {
+    width: 100%;
+    transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+    box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.2);
+    animation: fillBarVertical 1.5s ease-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fillBarVertical {
+    from {
+        height: 0 !important;
+    }
+}
+
+.porcentaje-grande {
+    color: white;
+    font-size: 1.5em;
+    font-weight: 900;
+    text-align: center;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.6);
+    order: -1;
+}
+
+.candidato-resultado.ganador .porcentaje-grande {
+    color: #ffd700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
 }
 
 .section-header {
@@ -1593,5 +1777,56 @@ td {
 .empty-state p {
     font-size: 1.1em;
     margin: 0;
+}
+
+/* Responsive Flash Electoral */
+@media (max-width: 768px) {
+    .flash-electoral {
+        padding: 20px;
+    }
+
+    .flash-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .flash-title-group h2 {
+        font-size: 1.3em;
+    }
+
+    .flash-year {
+        font-size: 1.8em;
+        padding: 8px 20px;
+    }
+
+    .candidato-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .candidato-foto-resultado {
+        width: 80px;
+        height: 80px;
+    }
+
+    .candidato-nombre-resultado {
+        font-size: 1.1em;
+    }
+
+    .barra-votos-wrapper {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .barra-votos-container {
+        height: 40px;
+    }
+
+    .porcentaje-grande {
+        font-size: 2em;
+        text-align: center;
+        min-width: auto;
+    }
 }
 </style>
